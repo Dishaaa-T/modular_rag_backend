@@ -54,16 +54,42 @@ class DenseRetriever(BaseRetriever):
         return retrieved
 
 
+# class RetrieverRegistry:
+#     def __init__(self, dense_retriever):
+#         self.retrievers = {
+#             "dense": dense_retriever,
+#         }
+
+#     def get(self, name: str):
+#         if name not in self.retrievers:
+#             raise ValueError(
+#                 f"Unknown retriever '{name}'. "
+#                 f"Available: {list(self.retrievers)}"
+#             )
+#         return self.retrievers[name]
+
+
 class RetrieverRegistry:
-    def __init__(self, dense_retriever):
+
+    def __init__(
+        self,
+        dense_retriever,
+        bm25_retriever,
+        hybrid_retriever,
+    ):
+
         self.retrievers = {
             "dense": dense_retriever,
+            "bm25": bm25_retriever,
+            "hybrid": hybrid_retriever,
         }
 
     def get(self, name: str):
+
         if name not in self.retrievers:
             raise ValueError(
                 f"Unknown retriever '{name}'. "
                 f"Available: {list(self.retrievers)}"
             )
+
         return self.retrievers[name]

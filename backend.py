@@ -1,4 +1,5 @@
 import os
+import time
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -10,11 +11,15 @@ from pydantic import BaseModel, Field
 from rag.config import settings
 from rag.embeddings import EmbeddingProvider
 from rag.vector_store import ChromaVectorStore
-from rag.retrievers import DenseRetriever, RetrieverRegistry
+
 from rag.rerankers import RerankerRegistry
 from rag.router import RouterRegistry
 from rag.generators import GeneratorRegistry
 from rag.pipeline import ModularRAG
+
+from rag.retrievers import DenseRetriever, RetrieverRegistry
+from rag.bm25_retriever import BM25Retriever
+from rag.hybrid import HybridRetriever
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -32,12 +37,36 @@ vector_store = ChromaVectorStore(
     collection_name=settings.collection_name,
 )
 
+# dense_retriever = DenseRetriever(
+#     embeddings=embedding_provider,
+#     vector_store=vector_store,
+# )
+
+# retrievers = RetrieverRegistry(dense_retriever)
+
+
 dense_retriever = DenseRetriever(
     embeddings=embedding_provider,
     vector_store=vector_store,
 )
 
-retrievers = RetrieverRegistry(dense_retriever)
+bm25_retriever = BM25Retriever(
+    vector_store=vector_store,
+)
+
+hybrid_retriever = HybridRetriever(
+    dense_retriever=dense_retriever,
+    bm25_retriever=bm25_retriever,
+    dense_weight=0.7,
+    bm25_weight=0.3,
+)
+
+retrievers = RetrieverRegistry(
+    dense_retriever=dense_retriever,
+    bm25_retriever=bm25_retriever,
+    hybrid_retriever=hybrid_retriever,
+)
+
 
 routers = RouterRegistry()
 router = routers.get(settings.router)
@@ -117,10 +146,21 @@ def query_knowledge(request: QueryRequest):
         )
 
     try:
+        # result = modular_rag.query(
+        #     query=query,
+        #     top_k=request.top_k,
+        # )
+
+        
+
+        start = time.perf_counter()
+
         result = modular_rag.query(
             query=query,
-            top_k=request.top_k,
+            top_k=request.top_k
         )
+
+        response_time = time.perf_counter() - start
 
         sources = []
 
@@ -137,11 +177,16 @@ def query_knowledge(request: QueryRequest):
                 "similarity_score": doc.similarity_score,
                 "rerank_score": doc.rerank_score,
                 "excerpt": doc.document[:300].strip(),
+                "bm25_score": doc.bm25_score,
+                "hybrid_score": doc.hybrid_score,
+                "dense_normalized_score": doc.dense_normalized_score,
+                "bm25_normalized_score": doc.bm25_normalized_score,
             })
 
         return {
             "query": query,
             "answer": result.answer,
+            "response_time": round(response_time, 3),
             "sources": sources,
             "routing": {
                 "mode": result.plan.retrieval_mode,

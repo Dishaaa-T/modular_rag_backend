@@ -60,7 +60,9 @@ User question:
 
 Answer:
 """
-
+        print("\n================ CONTEXT SENT TO LLM ================\n")
+        print(context)
+        print("\n======================================================\n")
         response = self.llm.invoke(prompt)
         return response.content
 

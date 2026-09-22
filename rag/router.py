@@ -40,8 +40,9 @@ class RuleBasedRouter:
 
         return QueryPlan(
             query=query,
-            retrieval_mode="dense",
+            retrieval_mode="hybrid",
             top_k=top_k,
+            reason="default hybrid retrieval",
         )
 
 

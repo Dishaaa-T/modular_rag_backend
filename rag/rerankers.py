@@ -41,21 +41,40 @@ class CrossEncoderReranker(BaseReranker):
             return []
 
         pairs = [
-            (query, document["document"])
+            # (query, document["document"])
+            (query, document.document)
             for document in documents
         ]
 
         scores = self.model.predict(pairs)
 
         for document, score in zip(documents, scores):
-            document["rerank_score"] = float(score)
+            # document["rerank_score"] = float(score)
+            document.rerank_score = float(score)
+
+        # documents.sort(
+        #     # key=lambda x: x["rerank_score"],
+        #     key=lambda x: x.rerank_score,
+        #     reverse=True
+        # )
+        # return documents[:top_k]
 
         documents.sort(
-            key=lambda x: x["rerank_score"],
+            key=lambda x: x.rerank_score,
             reverse=True
         )
 
-        return documents[:top_k]
+        reranked_documents = documents[:top_k]
+
+        for rank, document in enumerate(
+            reranked_documents,
+            start=1
+        ):
+            document.rank = rank
+
+        return reranked_documents
+
+        
 
 
 class RerankerRegistry:
